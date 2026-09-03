@@ -47,12 +47,21 @@ Un hub USB modificado que permite que ambos dispositivos funcionen simultáneame
 ---
 
 ## 📦 Estructura del proyecto
+```text
 digispark/
-  - digispark_en.ino
-  - digispark_es.ino
+   ├── digispark_en.ino       # Inyector para teclado en inglés con feedback LED
+   └── digispark_es.ino       # Inyector para teclado en español con feedback LED
 
 payloads/
-  - extractor.bat
+   ├── payload.bat            # Lanzador maestro (Reconocimiento del host + auditoría WiFi + submódulos)
+   ├── wifi-extractor/
+   │   └── payload.bat        # Extractor de credenciales WiFi agnóstico del idioma
+   ├── data-extractor/
+   │   └── payload.bat        # Extractor de documentos del usuario (PDF, DOCX, etc.)
+   └── software-installer/
+       ├── payload.bat        # Instalador silencioso dinámico para MSI / EXE / PS1
+       └── CARPETA_PROGS/     # Directorio destino de instaladores
+```
 
 ---
 
@@ -60,41 +69,41 @@ payloads/
 
 Para replicar este proyecto necesitas:
 
-- Digispark (ATtiny85)
-- Memoria USB
-- Hub USB (modificado o funcional)
-- Arduino IDE (para cargar el código)
-- Sistema operativo Windows (para ejecución del script)
+- Digispark (ATtiny85 con V-USB)
+- Memoria USB Flash
+- Hub USB (modificado o integrado)
+- Arduino IDE con soporte para placas Digistump AVR
+- Sistema operativo objetivo: Windows 7 / 8 / 10 / 11
 
 ---
 
 ## 🛠️ Uso / Configuración
 
-### 1. Preparar el Digispark
-- Abrir Arduino IDE
-- Cargar el archivo correspondiente:
-  - `digispark_en.ino` (teclado en inglés)
-  - `digispark_es.ino` (teclado en español)
-- Subir el código al Digispark
+### 1. Programar el Digispark
+- Abrir Arduino IDE.
+- Cargar el sketch correspondiente a tu entorno objetivo:
+  - `digispark_en.ino` (distribución de teclado en inglés / US)
+  - `digispark_es.ino` (distribución de teclado en español)
+- Subir el código a la placa Digispark.
+- **Comportamiento del indicador LED:**
+  - **Parpadeo (~4 segundos):** Etapa de enumeración. Permite a Windows montar tanto el dispositivo HID como el almacenamiento USB.
+  - **Encendido fijo:** Inyección de teclas finalizada y payload disparado con éxito.
 
-### 2. Preparar el USB
-- Copiar el archivo `extractor.bat` en la raíz del USB
-- (Opcional) Configurar el nombre del volumen según el script
+### 2. Preparar el almacenamiento USB
+- Copiar `payloads/payload.bat` (o el módulo específico de tu elección) en la **raíz** de la memoria USB.
+- Los resultados se almacenarán automáticamente en la carpeta `Data/` de la USB.
 
-### 3. Uso del dispositivo
-- Conectar NyxUSB al sistema objetivo
-- Activar el modo extractor (si aplica)
-- El proceso se ejecutará automáticamente
+### 3. Conexión y despliegue
+- Conectar NyxUSB al sistema objetivo.
+- El Digispark espera el montaje de la unidad, inyecta el lanzador mediante `Win + R` y ejecuta las acciones de forma oculta en segundo plano.
+- La rutina OPSEC integrada limpia automáticamente la clave de registro `RunMRU` y el historial de PowerShell al finalizar.
 
 ---
 
-## 🌍 Soporte multi-idioma
+## 🌍 Soporte Multi-idioma y Compatibilidad
 
-NyxUSB incluye soporte para sistemas configurados en inglés y español.
-
-Los payloads basados en HID dependen del layout del teclado, lo que puede generar incompatibilidades entre distintos idiomas.
-
-Este proyecto implementa versiones adaptadas para ambos entornos, permitiendo su correcto funcionamiento sin modificaciones adicionales.
+- **Distribución de Teclado:** Incluye inyectores específicos para configuraciones de teclado en inglés y español.
+- **Extracción Agnóstica del Idioma:** La recolección de contraseñas WiFi utiliza exportación nativa en XML, garantizando 100% de compatibilidad en sistemas en español, inglés, francés o cualquier configuración regional sin depender de cadenas de texto fijas.
 
 ---
 

