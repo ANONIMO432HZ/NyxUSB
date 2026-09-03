@@ -36,7 +36,7 @@ if not exist "%FOLDER_TARGET%" (
 :: ====================================================
 ::               EXTRACCION INTELIGENTE
 :: ====================================================
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$src = '%ORIGEN%'; $dest = '%FOLDER_TARGET%'; $max = [long]%MAX_SIZE_MB% * 1MB; $exts = '%FILTROS%'.Split(','); foreach ($ext in $exts) { Get-ChildItem -Path $src -Filter $ext.Trim() -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Length -le $max } | ForEach-Object { $cleanName = ($_.FullName.Replace($src, '').TrimStart('\', '/')).Replace('\', '_').Replace('/', '_'); $destFile = Join-Path $dest $cleanName; Copy-Item -Path $_.FullName -Destination $destFile -Force -ErrorAction SilentlyContinue } }"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$src = '%ORIGEN%'.TrimEnd('\', '/'); $dest = '%FOLDER_TARGET%'; $max = [long]%MAX_SIZE_MB% * 1MB; $exts = '%FILTROS%'.Split(','); foreach ($ext in $exts) { Get-ChildItem -Path $src -Filter $ext.Trim() -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Length -le $max } | ForEach-Object { $cleanName = $_.FullName.Substring($src.Length).TrimStart('\', '/').Replace('\', '_').Replace('/', '_'); $destFile = Join-Path $dest $cleanName; Copy-Item -Path $_.FullName -Destination $destFile -Force -ErrorAction SilentlyContinue } }"
 
 :: ====================================================
 ::               LIMPIEZA ANTI-FORENSE (OPSEC)
